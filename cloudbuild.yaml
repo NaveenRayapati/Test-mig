@@ -3,6 +3,7 @@ substitutions:
   _ZONE: "us-central1-a"
   _MIG_NAME: "my-mig"
   _TEMPLATE_PREFIX: "myapp-template"
+  _BUILD_ID_RAW: ${BUILD_ID}
 
 steps:
 # Step 1: Create new instance template
@@ -17,8 +18,8 @@ steps:
       # 1. GENERATE UNIQUE, LOWERCASE TEMPLATE NAME
       # Use SHORT_SHA if available, otherwise fall back to the guaranteed unique BUILD_ID.
       # Convert to lowercase for GCP naming compliance.
-      _UNIQUE_ID_LOWER=$(echo "${SHORT_SHA:-$BUILD_ID}" | tr '[:upper:]' '[:lower:]')
-      _TEMPLATE_NAME="${_TEMPLATE_PREFIX}-${_UNIQUE_ID_LOWER}"
+      UNIQUE_ID=$(echo "${_BUILD_ID_RAW}" | tr '[:upper:]' '[:lower:]')
+      _TEMPLATE_NAME="${_TEMPLATE_PREFIX}-${UNIQUE_ID}"
       
       echo "Generated Template Name: ${_TEMPLATE_NAME}"
       
