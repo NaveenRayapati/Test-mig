@@ -16,8 +16,8 @@ steps:
       
       # Use SHORT_SHA if available, otherwise fall back to BUILD_ID
       # This ensures the name is NEVER empty.
-      UNIQUE_ID="${SHORT_SHA:-$BUILD_ID}"
-      _TEMPLATE_NAME="${_TEMPLATE_PREFIX}-${UNIQUE_ID}"
+      _UNIQUE_ID="${SHORT_SHA:-$BUILD_ID}"
+      _TEMPLATE_NAME="${_TEMPLATE_PREFIX}-${_UNIQUE_ID}"
       
       echo "Creating instance template: ${_TEMPLATE_NAME} in project ${_PROJECT}"
 
