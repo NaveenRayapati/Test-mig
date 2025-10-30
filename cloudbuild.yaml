@@ -5,7 +5,7 @@ substitutions:
   _TEMPLATE_PREFIX: "myapp-template"
 
 steps:
-# Step 1: Create new instance template (Ubuntu-based)
+# Step 1: Create new instance template
 - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
   id: 'create-instance-template'
   entrypoint: 'bash'
@@ -14,23 +14,15 @@ steps:
     - |
       set -e
       
-      # 1. Capture the unique ID (guaranteed by Cloud Build)
-      #    We use $BUILD_ID as a fallback for SHORT_SHA is the most reliable way.
-      _UNIQUE_ID_RAW="${SHORT_SHA:-$BUILD_ID}"
+      # 1. GENERATE UNIQUE, LOWERCASE TEMPLATE NAME
+      # Use SHORT_SHA if available, otherwise fall back to the guaranteed unique BUILD_ID.
+      # Convert to lowercase for GCP naming compliance.
+      UNIQUE_ID=$(echo "${SHORT_SHA:-$BUILD_ID}" | tr '[:upper:]' '[:lower:]')
+      _TEMPLATE_NAME="${_TEMPLATE_PREFIX}-${UNIQUE_ID}"
       
-      # 2. Convert the unique ID to lowercase to ensure GCP naming compliance.
-      _UNIQUE_ID=$(echo "${_UNIQUE_ID_RAW}" | tr '[:upper:]' '[:lower:]')
+      echo "Generated Template Name: ${_TEMPLATE_NAME}"
       
-      # 3. Construct the final template name
-      _TEMPLATE_NAME="${_TEMPLATE_PREFIX}-${_UNIQUE_ID}"
-      
-      # Debugging echo statements
-      echo "Unique ID (Raw): ${_UNIQUE_ID_RAW}"
-      echo "Unique ID (Lower): ${_UNIQUE_ID}"
-      echo "Creating instance template: ${_TEMPLATE_NAME} in project ${_PROJECT}"
-
-      # Create instance template using Ubuntu 22.04
-      # Template name is guaranteed to be non-empty and compliant here.
+      # 2. CREATE INSTANCE TEMPLATE
       gcloud compute instance-templates create "${_TEMPLATE_NAME}" \
         --project="${_PROJECT}" \
         --machine-type=e2-medium \
@@ -42,10 +34,10 @@ steps:
         --image-project=ubuntu-os-cloud \
         --quiet
 
-      # Save template name for next step
+      # 3. Save template name for the next step
       echo "${_TEMPLATE_NAME}" > /workspace/_TEMPLATE_NAME.txt
 
-# Step 2: Rolling update the MIG
+# Step 2: Rolling update the MIG for zero-downtime
 - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
   id: 'rolling-update'
   entrypoint: 'bash'
@@ -56,8 +48,8 @@ steps:
       _TEMPLATE_NAME=$(cat /workspace/_TEMPLATE_NAME.txt)
       echo "Starting rolling update for MIG ${_MIG_NAME} using template ${_TEMPLATE_NAME}"
 
-      # Perform rolling update
-      # NOTE: Added --project flag
+      # max-unavailable=0: New instance must be healthy before old one is deleted (Zero Downtime).
+      # max-surge=1: Allows one extra instance to spin up for the swap.
       gcloud compute instance-groups managed rolling-action start-update "${_MIG_NAME}" \
         --project="${_PROJECT}" \
         --zone="${_ZONE}" \
@@ -66,5 +58,3 @@ steps:
         --max-unavailable=0 \
         --type=proactive \
         --quiet
-
-timeout: 1200s
