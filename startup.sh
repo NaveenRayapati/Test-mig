@@ -2,7 +2,7 @@
 set -e
 
 # VARIABLES (edit if you want)
-REPO_URL="https://github.com/YOUR_ORG/YOUR_REPO.git"
+REPO_URL="https://github.com/NaveenRayapati/Test-mig.git"
 BRANCH="main"
 APP_DIR="/opt/app"
 INSTANCE_ID="$(curl -H 'Metadata-Flavor: Google' http://169.254.169.254/computeMetadata/v1/instance/id || echo unknown)"
