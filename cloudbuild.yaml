@@ -1,20 +1,12 @@
-# =========================================
-# Google Cloud Build Configuration
-# Automatically create a new instance template
-# and perform a zero-downtime rolling update on MIG.
-# =========================================
-
 substitutions:
-  _PROJECT: "cloudside-academy"                 # Your GCP project ID
-  _REGION: "us-central1"           # Region where MIG exists
-  _ZONE: "us-central1-a"           # Zone (used only if MIG is zonal)
-  _MIG_NAME: "my-mig"              # Managed Instance Group name
-  _TEMPLATE_PREFIX: "myapp-template" # Prefix for template name
+  _PROJECT: "cloudside-academy"
+  _REGION: "us-central1"
+  _ZONE: "us-central1-a"
+  _MIG_NAME: "my-mig"
+  _TEMPLATE_PREFIX: "myapp-template"
 
 steps:
-# -----------------------------------------
-# Step 1: Create new instance template
-# -----------------------------------------
+# Step 1: Create instance template
 - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
   id: 'create-instance-template'
   entrypoint: 'bash'
@@ -23,27 +15,23 @@ steps:
     - |
       set -e
       echo "Project: ${_PROJECT}"
-      SHORT_SHA=${SHORT_SHA:-$BUILD_ID}
-      TEMPLATE_NAME="${_TEMPLATE_PREFIX}-${SHORT_SHA}"
-      echo "Creating instance template: ${TEMPLATE_NAME}"
 
-      # Create instance template with startup.sh
-      gcloud compute instance-templates create ${TEMPLATE_NAME} \
-        --project=${_PROJECT} \
-        --region=${_REGION} \
+      # Generate unique template name using build ID or commit SHA
+      SHORT_SHA="${SHORT_SHA:-${BUILD_ID}}"
+      _TEMPLATE_NAME="${_TEMPLATE_PREFIX}-${SHORT_SHA}"
+      echo "Creating instance template: ${_TEMPLATE_NAME}"
+
+      gcloud compute instance-templates create "${_TEMPLATE_NAME}" \
+        --project="${_PROJECT}" \
         --machine-type=e2-medium \
-        --metadata-from-file startup-script=startup.sh \
+        --metadata-from-file=startup-script=startup.sh \
         --tags=http-server \
-        --image-family=debian-11 \
-        --image-project=debian-cloud \
         --quiet
 
-      # Store template name for next step
-      echo ${TEMPLATE_NAME} > /workspace/TEMPLATE_NAME
+      # Save the name for next step
+      echo "${_TEMPLATE_NAME}" > /workspace/_TEMPLATE_NAME.txt
 
-# -----------------------------------------
-# Step 2: Rolling update on MIG
-# -----------------------------------------
+# Step 2: Rolling update of the MIG using new template
 - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
   id: 'rolling-update'
   entrypoint: 'bash'
@@ -51,13 +39,13 @@ steps:
     - '-c'
     - |
       set -e
-      TEMPLATE_NAME=$(cat /workspace/TEMPLATE_NAME)
-      echo "Starting rolling update for MIG ${_MIG_NAME} using ${TEMPLATE_NAME}"
+      _TEMPLATE_NAME=$(cat /workspace/_TEMPLATE_NAME.txt)
+      echo "Starting rolling update for MIG ${_MIG_NAME} using template ${_TEMPLATE_NAME}"
 
-      gcloud compute instance-groups managed rolling-action start-update ${_MIG_NAME} \
-        --project=${_PROJECT} \
-        --region=${_REGION} \
-        --version=template=${TEMPLATE_NAME} \
+      gcloud compute instance-groups managed rolling-action start-update "${_MIG_NAME}" \
+        --project="${_PROJECT}" \
+        --region="${_REGION}" \
+        --version=template="${_TEMPLATE_NAME}" \
         --max-surge=1 \
         --max-unavailable=0 \
         --type=proactive \
