@@ -14,16 +14,23 @@ steps:
     - |
       set -e
       
-      # Use SHORT_SHA if available, otherwise fall back to BUILD_ID
-      # This ensures the name is NEVER empty.
-      _UNIQUE_ID=$(echo "${SHORT_SHA:-$BUILD_ID}" | tr '[:upper:]' '[:lower:]')
+      # 1. Capture the unique ID (guaranteed by Cloud Build)
+      #    We use $BUILD_ID as a fallback for SHORT_SHA is the most reliable way.
+      _UNIQUE_ID_RAW="${SHORT_SHA:-$BUILD_ID}"
+      
+      # 2. Convert the unique ID to lowercase to ensure GCP naming compliance.
+      _UNIQUE_ID=$(echo "${_UNIQUE_ID_RAW}" | tr '[:upper:]' '[:lower:]')
+      
+      # 3. Construct the final template name
       _TEMPLATE_NAME="${_TEMPLATE_PREFIX}-${_UNIQUE_ID}"
       
-      echo "Template prefix: ${_TEMPLATE_PREFIX}"
-      echo "Unique ID (SHORT_SHA or BUILD_ID): ${_UNIQUE_ID}"
+      # Debugging echo statements
+      echo "Unique ID (Raw): ${_UNIQUE_ID_RAW}"
+      echo "Unique ID (Lower): ${_UNIQUE_ID}"
       echo "Creating instance template: ${_TEMPLATE_NAME} in project ${_PROJECT}"
 
       # Create instance template using Ubuntu 22.04
+      # Template name is guaranteed to be non-empty and compliant here.
       gcloud compute instance-templates create "${_TEMPLATE_NAME}" \
         --project="${_PROJECT}" \
         --machine-type=e2-medium \
