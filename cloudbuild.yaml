@@ -1,0 +1,55 @@
+# cloudbuild.yaml
+substitutions:
+  _PROJECT: "cloudside-academy"
+  _REGION: "us-central1"
+  _ZONE: "us-central1-a"
+  _MIG_NAME: "my-mig"
+  _TEMPLATE_PREFIX: "myapp-template"
+
+steps:
+# Step 1: Create instance template that references our startup.sh in the build workspace
+- name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+  id: 'create-instance-template'
+  entrypoint: 'bash'
+  args:
+  - '-c'
+  - |
+    set -e
+    echo "Project: ${_PROJECT}"
+    SHORT_SHA=${SHORT_SHA:-$BUILD_ID}
+    TEMPLATE_NAME="${_TEMPLATE_PREFIX}-${SHORT_SHA}"
+    echo "Creating instance template: ${TEMPLATE_NAME}"
+    # Use --metadata-from-file to attach startup.sh located in the repo
+    gcloud compute instance-templates create ${TEMPLATE_NAME} \
+      --project=${_PROJECT} \
+      --region=${_REGION} \
+      --machine-type=e2-medium \
+      --metadata-from-file startup-script=startup.sh \
+      --tags=http-server \
+      --quiet
+
+    # Save the template name to a file for step 2
+    echo ${TEMPLATE_NAME} > /workspace/TEMPLATE_NAME
+
+# Step 2: Start rolling update of the MIG using the new template
+- name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+  id: 'start-rolling-update'
+  entrypoint: 'bash'
+  args:
+  - '-c'
+  - |
+    set -e
+    TEMPLATE_NAME=$(cat /workspace/TEMPLATE_NAME)
+    echo "Starting rolling update for MIG ${_MIG_NAME} using template ${TEMPLATE_NAME}"
+    # If MIG is regional, use --region; for zonal MIG use --zone
+    # This example assumes a regional MIG; change to --zone=${_ZONE} and remove --region if you use zonal
+    gcloud compute instance-groups managed rolling-action start-update ${_MIG_NAME} \
+      --project=${_PROJECT} \
+      --region=${_REGION} \
+      --version=template=${TEMPLATE_NAME} \
+      --max-surge=1 \
+      --max-unavailable=0 \
+      --type=proactive \
+      --quiet
+
+timeout: 1200s
