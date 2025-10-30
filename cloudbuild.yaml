@@ -13,8 +13,8 @@ steps:
     - '-c'
     - |
       set -e
-      _SHORT_SHA="${_SHORT_SHA:-${_BUILD_ID}}"
-      _TEMPLATE_NAME="${_TEMPLATE_PREFIX}-${_SHORT_SHA}"
+      SHORT_SHA="${SHORT_SHA:-${BUILD_ID}}"
+      TEMPLATE_NAME="${_TEMPLATE_PREFIX}-${SHORT_SHA}"
       gcloud compute instance-templates create "${_TEMPLATE_NAME}" \
         --project="${_PROJECT}" \
         --machine-type=e2-medium \
