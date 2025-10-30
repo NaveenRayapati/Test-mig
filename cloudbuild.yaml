@@ -3,6 +3,7 @@ substitutions:
   _ZONE: "us-central1-a"
   _MIG_NAME: "my-mig"
   _TEMPLATE_PREFIX: "myapp-template"
+  _BUILD_ID_RAW: ${BUILD_ID}
   
 steps:
 # Step 1: Create new instance template
@@ -13,8 +14,8 @@ steps:
     - '-c'
     - |
       set -e
-      SHORT_SHA="${SHORT_SHA:-${BUILD_ID}}"
-      TEMPLATE_NAME="${_TEMPLATE_PREFIX}-${SHORT_SHA}"
+      UNIQUE_ID=$(echo "${_BUILD_ID_RAW}" | tr '[:upper:]' '[:lower:]')
+      _TEMPLATE_NAME="${_TEMPLATE_PREFIX}-${UNIQUE_ID}"
       gcloud compute instance-templates create "${_TEMPLATE_NAME}" \
         --project="${_PROJECT}" \
         --machine-type=e2-medium \
