@@ -2,7 +2,7 @@ substitutions:
   _PROJECT: "cloudside-academy"
   _ZONE: "us-central1-a"
   _MIG_NAME: "my-mig"
-  _TEMPLATE_PREFIX: "myapp-template"
+  _TEMPLATE_NAME: "myapp-template"
   
 steps:
 # Step 1: Create new instance template
