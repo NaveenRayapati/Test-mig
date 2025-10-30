@@ -35,7 +35,7 @@ steps:
     - |
       set -e
       _TEMPLATE_NAME=$(cat /workspace/_TEMPLATE_NAME.txt)
-      MIG_FULL_NAME="projects/${_PROJECT}/zones/${_ZONE}/instanceGroupManagers/${_MIG_NAME}"
+      _MIG_FULL_NAME="projects/${_PROJECT}/zones/${_ZONE}/instanceGroupManagers/${_MIG_NAME}"
       
       # Check if the MIG exists
       if gcloud compute instance-groups managed describe "${_MIG_NAME}" \
