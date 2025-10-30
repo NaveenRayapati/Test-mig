@@ -13,15 +13,15 @@ steps:
     - '-c'
     - |
       set -e
-      echo "Project: ${_PROJECT}"
-
-      # Generate unique template name
-      SHORT_SHA="${SHORT_SHA:-${BUILD_ID}}"
-      _TEMPLATE_NAME="${_TEMPLATE_PREFIX}-${SHORT_SHA}"
-      echo "Creating instance template: ${_TEMPLATE_NAME}"
+      
+      # Use the Cloud Build environment variables SHORT_SHA or BUILD_ID for unique naming
+      _TEMPLATE_NAME="${_TEMPLATE_PREFIX}-${SHORT_SHA:-$BUILD_ID}"
+      echo "Creating instance template: ${_TEMPLATE_NAME} in project ${_PROJECT}"
 
       # Create instance template using Ubuntu 22.04
+      # NOTE: Added --project flag
       gcloud compute instance-templates create "${_TEMPLATE_NAME}" \
+        --project="${_PROJECT}" \
         --machine-type=e2-medium \
         --metadata-from-file startup-script=startup.sh \
         --tags=http-server \
@@ -45,7 +45,10 @@ steps:
       _TEMPLATE_NAME=$(cat /workspace/_TEMPLATE_NAME.txt)
       echo "Starting rolling update for MIG ${_MIG_NAME} using template ${_TEMPLATE_NAME}"
 
+      # Perform rolling update
+      # NOTE: Added --project flag
       gcloud compute instance-groups managed rolling-action start-update "${_MIG_NAME}" \
+        --project="${_PROJECT}" \
         --zone="${_ZONE}" \
         --version=template="${_TEMPLATE_NAME}" \
         --max-surge=1 \
