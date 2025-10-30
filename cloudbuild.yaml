@@ -17,8 +17,8 @@ steps:
       # 1. GENERATE UNIQUE, LOWERCASE TEMPLATE NAME
       # Use SHORT_SHA if available, otherwise fall back to the guaranteed unique BUILD_ID.
       # Convert to lowercase for GCP naming compliance.
-      UNIQUE_ID=$(echo "${SHORT_SHA:-$BUILD_ID}" | tr '[:upper:]' '[:lower:]')
-      _TEMPLATE_NAME="${_TEMPLATE_PREFIX}-${UNIQUE_ID}"
+      _UNIQUE_ID_LOWER=$(echo "${SHORT_SHA:-$BUILD_ID}" | tr '[:upper:]' '[:lower:]')
+      _TEMPLATE_NAME="${_TEMPLATE_PREFIX}-${_UNIQUE_ID_LOWER}"
       
       echo "Generated Template Name: ${_TEMPLATE_NAME}"
       
