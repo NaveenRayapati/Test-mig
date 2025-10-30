@@ -26,8 +26,41 @@ steps:
 
       # 3. Save template name for the next step
       echo "${_TEMPLATE_NAME}" > /workspace/_TEMPLATE_NAME.txt
-
-# Step 2: Rolling update the MIG for zero-downtime
+# Step 2: check MIG exist or not and create it if not there
+- name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+  id: 'create-or-update-mig'
+  entrypoint: 'bash'
+  args:
+    - '-c'
+    - |
+      set -e
+      _TEMPLATE_NAME=$(cat /workspace/_TEMPLATE_NAME.txt)
+      MIG_FULL_NAME="projects/${_PROJECT}/zones/${_ZONE}/instanceGroupManagers/${_MIG_NAME}"
+      
+      # Check if the MIG exists
+      if gcloud compute instance-groups managed describe "${_MIG_NAME}" \
+          --zone="${_ZONE}" --project="${_PROJECT}" &> /dev/null; then
+          
+          # MIG EXISTS: Proceed to rolling update (Step 2 will handle the update)
+          echo "MIG ${_MIG_NAME} already exists. Proceeding to update..."
+          
+      else
+          # MIG DOES NOT EXIST: Create it using the new template
+          echo "MIG ${_MIG_NAME} not found. Creating a new MIG..."
+          gcloud compute instance-groups managed create "${_MIG_NAME}" \
+              --project="${_PROJECT}" \
+              --zone="${_ZONE}" \
+              --base-instance-name="${_MIG_NAME}-instance" \
+              --template="${_TEMPLATE_NAME}" \
+              --size=1 \
+              --quiet
+          
+          # Since the MIG was just created, the rolling-action start-update is not necessary
+          # and could cause issues. We'll exit this step and then ensure Step 2 only runs 
+          # an update if the MIG existed previously. For simplicity, we just create it here
+          # and let the next step handle the update intent, which will now find the resource.
+      fi
+# Step 3: Rolling update the MIG for zero-downtime
 - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
   id: 'rolling-update'
   entrypoint: 'bash'
