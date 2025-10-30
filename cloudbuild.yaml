@@ -16,11 +16,11 @@ steps:
       
       # Use SHORT_SHA if available, otherwise fall back to BUILD_ID
       # This ensures the name is NEVER empty.
-      UNIQUE_ID=$(echo "${SHORT_SHA:-$BUILD_ID}" | tr '[:upper:]' '[:lower:]')
-      _TEMPLATE_NAME="${_TEMPLATE_PREFIX}-${UNIQUE_ID}"
+      _UNIQUE_ID=$(echo "${SHORT_SHA:-$BUILD_ID}" | tr '[:upper:]' '[:lower:]')
+      _TEMPLATE_NAME="${_TEMPLATE_PREFIX}-${_UNIQUE_ID}"
       
       echo "Template prefix: ${_TEMPLATE_PREFIX}"
-      echo "Unique ID (SHORT_SHA or BUILD_ID): ${UNIQUE_ID}"
+      echo "Unique ID (SHORT_SHA or BUILD_ID): ${_UNIQUE_ID}"
       echo "Creating instance template: ${_TEMPLATE_NAME} in project ${_PROJECT}"
 
       # Create instance template using Ubuntu 22.04
