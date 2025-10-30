@@ -1,12 +1,11 @@
 substitutions:
   _PROJECT: "cloudside-academy"
-  _REGION: "us-central1"
   _ZONE: "us-central1-a"
   _MIG_NAME: "my-mig"
   _TEMPLATE_PREFIX: "myapp-template"
 
 steps:
-# Step 1: Create instance template
+# Step 1: Create new instance template (Ubuntu-based)
 - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
   id: 'create-instance-template'
   entrypoint: 'bash'
@@ -16,22 +15,26 @@ steps:
       set -e
       echo "Project: ${_PROJECT}"
 
-      # Generate unique template name using build ID or commit SHA
+      # Generate unique template name
       SHORT_SHA="${SHORT_SHA:-${BUILD_ID}}"
       _TEMPLATE_NAME="${_TEMPLATE_PREFIX}-${SHORT_SHA}"
       echo "Creating instance template: ${_TEMPLATE_NAME}"
 
+      # Create instance template using Ubuntu 22.04
       gcloud compute instance-templates create "${_TEMPLATE_NAME}" \
-        --project="${_PROJECT}" \
         --machine-type=e2-medium \
-        --metadata-from-file=startup-script=startup.sh \
+        --metadata-from-file startup-script=startup.sh \
         --tags=http-server \
+        --boot-disk-size=20GB \
+        --boot-disk-type=pd-balanced \
+        --image-family=ubuntu-2204-lts \
+        --image-project=ubuntu-os-cloud \
         --quiet
 
-      # Save the name for next step
+      # Save template name for next step
       echo "${_TEMPLATE_NAME}" > /workspace/_TEMPLATE_NAME.txt
 
-# Step 2: Rolling update of the MIG using new template
+# Step 2: Rolling update the MIG
 - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
   id: 'rolling-update'
   entrypoint: 'bash'
@@ -43,8 +46,7 @@ steps:
       echo "Starting rolling update for MIG ${_MIG_NAME} using template ${_TEMPLATE_NAME}"
 
       gcloud compute instance-groups managed rolling-action start-update "${_MIG_NAME}" \
-        --project="${_PROJECT}" \
-        --region="${_REGION}" \
+        --zone="${_ZONE}" \
         --version=template="${_TEMPLATE_NAME}" \
         --max-surge=1 \
         --max-unavailable=0 \
@@ -52,5 +54,3 @@ steps:
         --quiet
 
 timeout: 1200s
-
-
