@@ -1,40 +1,36 @@
 #! /bin/bash
 set -e
 
-# VARIABLES (edit if you want)
+# VARIABLES
 REPO_URL="https://github.com/NaveenRayapati/Test-mig.git"
 BRANCH="main"
 APP_DIR="/opt/app"
+# Get Instance ID from metadata for unique identification in the app
 INSTANCE_ID="$(curl -H 'Metadata-Flavor: Google' http://169.254.169.254/computeMetadata/v1/instance/id || echo unknown)"
 PORT=8080
 
-# update & install prerequisites
+# 1. Update & Install prerequisites
 apt-get update -y
 apt-get install -y curl git
-
-# Install Node.js (LTS) and npm
-# using NodeSource (works on Debian/Ubuntu)
 curl -fsSL https://deb.nodesource.com/setup_lts.x | bash -
 apt-get install -y nodejs
 
-# create app directory
-mkdir -p ${APP_DIR}
-chown -R $(whoami) ${APP_DIR}
-
-# clone or pull code (idempotent)
+# 2. Clone or pull code (idempotent setup)
 if [ -d "${APP_DIR}/.git" ]; then
   cd ${APP_DIR}
   git fetch --all
   git reset --hard origin/${BRANCH}
 else
-  rm -rf ${APP_DIR}/*
+  # Ensure clean clone if directory exists but is not a git repo
+  rm -rf ${APP_DIR}
   git clone --branch ${BRANCH} ${REPO_URL} ${APP_DIR}
 fi
 
+# 3. Install NPM dependencies
 cd ${APP_DIR}
 npm install --production || true
 
-# create a systemd service to run the app
+# 4. Create and start a systemd service (your app starts on boot)
 SERVICE_NAME="simple-node-app.service"
 cat >/etc/systemd/system/${SERVICE_NAME} <<EOF
 [Unit]
@@ -44,6 +40,7 @@ After=network.target
 [Service]
 Type=simple
 User=root
+# Pass environment variables to the app
 Environment=PORT=${PORT}
 Environment=INSTANCE_ID=${INSTANCE_ID}
 WorkingDirectory=${APP_DIR}
@@ -59,6 +56,4 @@ systemctl daemon-reload
 systemctl enable ${SERVICE_NAME}
 systemctl restart ${SERVICE_NAME}
 
-# Ensure firewall (if necessary) and health-check listen port is open:
-# On Google-managed images default firewall for external LB will be allowed via LB.
 echo "Startup script finished on $(date)."
