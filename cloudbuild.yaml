@@ -1,62 +1,68 @@
-
-# ========================
-# Google Cloud Build config
-# ========================
+# =========================================
+# Google Cloud Build Configuration
+# Automatically create a new instance template
+# and perform a zero-downtime rolling update on MIG.
+# =========================================
 
 substitutions:
-  _PROJECT: "cloudside-academy"
-  _REGION: "us-central1"
-  _ZONE: "us-central1-a"
-  _MIG_NAME: "my-mig"
-  _TEMPLATE_PREFIX: "myapp-template"
+  _PROJECT: "cloudside-academy"                 # Your GCP project ID
+  _REGION: "us-central1"           # Region where MIG exists
+  _ZONE: "us-central1-a"           # Zone (used only if MIG is zonal)
+  _MIG_NAME: "my-mig"              # Managed Instance Group name
+  _TEMPLATE_PREFIX: "myapp-template" # Prefix for template name
 
 steps:
+# -----------------------------------------
 # Step 1: Create new instance template
+# -----------------------------------------
 - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
   id: 'create-instance-template'
   entrypoint: 'bash'
   args:
-  - '-c'
-  - |
-    set -e
-    echo "Project: ${_PROJECT}"
-    SHORT_SHA=${SHORT_SHA:-$BUILD_ID}
-    TEMPLATE_NAME="${_TEMPLATE_PREFIX}-${SHORT_SHA}"
-    echo "Creating instance template: ${TEMPLATE_NAME}"
+    - '-c'
+    - |
+      set -e
+      echo "Project: ${_PROJECT}"
+      SHORT_SHA=${SHORT_SHA:-$BUILD_ID}
+      TEMPLATE_NAME="${_TEMPLATE_PREFIX}-${SHORT_SHA}"
+      echo "Creating instance template: ${TEMPLATE_NAME}"
 
-    # Create instance template with startup script
-    gcloud compute instance-templates create ${TEMPLATE_NAME} \
-      --project=${_PROJECT} \
-      --machine-type=e2-medium \
-      --region=${_REGION} \
-      --metadata-from-file startup-script=startup.sh \
-      --tags=http-server \
-      --image-family=debian-11 \
-      --image-project=debian-cloud \
-      --quiet
+      # Create instance template with startup.sh
+      gcloud compute instance-templates create ${TEMPLATE_NAME} \
+        --project=${_PROJECT} \
+        --region=${_REGION} \
+        --machine-type=e2-medium \
+        --metadata-from-file startup-script=startup.sh \
+        --tags=http-server \
+        --image-family=debian-11 \
+        --image-project=debian-cloud \
+        --quiet
 
-    # Save template name for next step
-    echo ${TEMPLATE_NAME} > /workspace/TEMPLATE_NAME
+      # Store template name for next step
+      echo ${TEMPLATE_NAME} > /workspace/TEMPLATE_NAME
 
-# Step 2: Rolling update on MIG (zero downtime)
+# -----------------------------------------
+# Step 2: Rolling update on MIG
+# -----------------------------------------
 - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
-  id: 'update-mig'
+  id: 'rolling-update'
   entrypoint: 'bash'
   args:
-  - '-c'
-  - |
-    set -e
-    TEMPLATE_NAME=$(cat /workspace/TEMPLATE_NAME)
-    echo "Starting rolling update for MIG ${_MIG_NAME} using template ${TEMPLATE_NAME}"
+    - '-c'
+    - |
+      set -e
+      TEMPLATE_NAME=$(cat /workspace/TEMPLATE_NAME)
+      echo "Starting rolling update for MIG ${_MIG_NAME} using ${TEMPLATE_NAME}"
 
-    gcloud compute instance-groups managed rolling-action start-update ${_MIG_NAME} \
-      --project=${_PROJECT} \
-      --region=${_REGION} \
-      --version=template=${TEMPLATE_NAME} \
-      --max-surge=1 \
-      --max-unavailable=0 \
-      --type=proactive \
-      --quiet
+      gcloud compute instance-groups managed rolling-action start-update ${_MIG_NAME} \
+        --project=${_PROJECT} \
+        --region=${_REGION} \
+        --version=template=${TEMPLATE_NAME} \
+        --max-surge=1 \
+        --max-unavailable=0 \
+        --type=proactive \
+        --quiet
 
 timeout: 1200s
+
 
