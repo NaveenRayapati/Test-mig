@@ -2,9 +2,8 @@ substitutions:
   _PROJECT: "cloudside-academy"
   _ZONE: "us-central1-a"
   _MIG_NAME: "my-mig"
-  _TEMPLATE_PREFIX: "myapp-template"
-  _BUILD_ID_RAW: ${BUILD_ID} # Use substitution for built-in variable
-  
+  _TEMPLATE_NAME: "myapp-template-${BUILD_ID}"
+ 
 steps:
 # Step 1: Create new instance template
 - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
@@ -14,13 +13,6 @@ steps:
     - '-c'
     - |
       set -e
-      
-      # *** FIX: Renamed internal variable to bypass Cloud Build parser issue ***
-      _TEMP_ID=$(echo "${_BUILD_ID_RAW}" | tr '[:upper:]' '[:lower:]')
-      _TEMPLATE_NAME="${_TEMPLATE_PREFIX}-${_TEMP_ID}"
-      
-      echo "Generated Template Name: ${_TEMPLATE_NAME}"
-      
       gcloud compute instance-templates create "${_TEMPLATE_NAME}" \
         --project="${_PROJECT}" \
         --machine-type=e2-medium \
@@ -32,7 +24,6 @@ steps:
         --image-project=ubuntu-os-cloud \
         --quiet
 
-      # 3. Save template name for the next step
       echo "${_TEMPLATE_NAME}" > /workspace/_TEMPLATE_NAME.txt
       
 # Step 2: check MIG exist or not and create it if not there
