@@ -14,12 +14,14 @@ steps:
     - |
       set -e
       
-      # Use the Cloud Build environment variables SHORT_SHA or BUILD_ID for unique naming
-      _TEMPLATE_NAME="${_TEMPLATE_PREFIX}-${SHORT_SHA:-$BUILD_ID}"
+      # Use SHORT_SHA if available, otherwise fall back to BUILD_ID
+      # This ensures the name is NEVER empty.
+      UNIQUE_ID="${SHORT_SHA:-$BUILD_ID}"
+      _TEMPLATE_NAME="${_TEMPLATE_PREFIX}-${UNIQUE_ID}"
+      
       echo "Creating instance template: ${_TEMPLATE_NAME} in project ${_PROJECT}"
 
       # Create instance template using Ubuntu 22.04
-      # NOTE: Added --project flag
       gcloud compute instance-templates create "${_TEMPLATE_NAME}" \
         --project="${_PROJECT}" \
         --machine-type=e2-medium \
